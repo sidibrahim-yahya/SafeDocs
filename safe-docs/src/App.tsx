@@ -6,7 +6,6 @@ import FileUpload from "./components/FileUpload";
 import FileList from "./components/FileList";
 import "./App.css";
 
-// Icônes SVG
 function UploadIcon(props: { className?: string }) {
     return (
         <svg viewBox="0 0 24 24" fill="none" aria-hidden className={props.className}>
@@ -61,13 +60,11 @@ function App() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
-    // Récupération sécurisée de la session
     supabase.auth.getSession()
       .then((res) => {
         setSession(res.data.session);
       })
-      .catch((err: unknown) => {
-        console.error("getSession error:", err);
+      .catch(() => {
       });
 
     const { data: listener } = supabase.auth.onAuthStateChange(

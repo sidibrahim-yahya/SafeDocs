@@ -23,13 +23,11 @@ export default function FileUpload({ session, onSuccess }: FileUploadProps) {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Helper: convert File to base64
   function fileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
-        // Remove data:xxx;base64, prefix
         const base64 = result.split(',')[1];
         resolve(base64);
       };
@@ -43,7 +41,6 @@ export default function FileUpload({ session, onSuccess }: FileUploadProps) {
     const lastDotIndex = originalFilename.lastIndexOf('.');
     
     if (lastDotIndex === -1) {
-      // Pas d'extension
       return `${originalFilename}_${timestamp}`;
     }
     
@@ -54,17 +51,14 @@ export default function FileUpload({ session, onSuccess }: FileUploadProps) {
 
   const processFile = async (file: File, isRetry = false, newFilename?: string) => {
     const filename = newFilename || file.name;
-    console.log("[FileUpload] selected file", { name: filename, size: file.size, type: file.type });
 
     const userId = session?.user?.id;
     if (!userId) {
-      console.warn("[FileUpload] missing session.user.id");
       setMessage("Session invalide : utilisateur non connecté.");
       setMessageType('error');
       return;
     }
 
-    // Validation de la taille (max 50MB)
     const maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
       setMessage("Le fichier est trop volumineux. Taille maximale : 50 MB");
@@ -76,10 +70,7 @@ export default function FileUpload({ session, onSuccess }: FileUploadProps) {
       setUploading(true);
       setMessage(null);
       setUploadProgress(10);
-      console.log("[FileUpload] start upload via gateway", { filename });
-      const startedAt = performance.now();
 
-      // Get access token from Supabase session
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       const token = currentSession?.access_token;
       if (!token) {
@@ -90,11 +81,9 @@ export default function FileUpload({ session, onSuccess }: FileUploadProps) {
 
       setUploadProgress(30);
 
-      // Convert file to base64
       const base64 = await fileToBase64(file);
       setUploadProgress(60);
 
-      // Call gateway API
       const response = await fetch(`${API_GATEWAY_URL}/v1/files/upload`, {
         method: 'POST',
         headers: {
@@ -112,9 +101,7 @@ export default function FileUpload({ session, onSuccess }: FileUploadProps) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: response.statusText }));
-        console.error("[FileUpload] uploadError", errorData);
         
-        // Détecter si c'est une erreur de doublon ou de RLS
         const errorMessage = errorData.message || errorData.code || '';
         const isRLSError = errorMessage.toLowerCase().includes('row-level security') || 
                           errorMessage.toLowerCase().includes('duplicate') ||
@@ -122,14 +109,11 @@ export default function FileUpload({ session, onSuccess }: FileUploadProps) {
                           response.status === 409;
         
         if (isRLSError && !isRetry) {
-          // Demander à l'utilisateur de renommer le fichier
-          console.log("[FileUpload] Fichier existe déjà, demande de renommage à l'utilisateur");
           setUploading(false);
           setUploadProgress(0);
           setMessage("⚠️ Un fichier avec ce nom existe déjà. Veuillez choisir un nouveau nom.");
           setMessageType('info');
           
-          // Suggérer un nom automatique
           const suggestedName = generateUniqueFilename(file.name);
           setNewFileName(suggestedName);
           setPendingFile(file);
@@ -137,7 +121,6 @@ export default function FileUpload({ session, onSuccess }: FileUploadProps) {
           return;
         }
         
-        // Autre erreur ou retry a échoué
         const friendlyMessage = isRLSError 
           ? "Impossible de téléverser le fichier. Un conflit de nom persiste."
           : `Erreur d'upload : ${errorMessage}`;
@@ -147,16 +130,10 @@ export default function FileUpload({ session, onSuccess }: FileUploadProps) {
         return;
       }
 
-      const result = await response.json();
-      console.log("[FileUpload] upload success", {
-        result,
-        elapsedMs: Math.round(performance.now() - startedAt),
-        size: file.size,
-      });
+      await response.json();
 
       setUploadProgress(100);
       
-      // Message différent si le fichier a été renommé
       const successMessage = newFilename 
         ? `✅ Fichier téléversé avec succès sous le nom "${newFilename}" !`
         : `✅ Fichier "${file.name}" téléversé avec succès !`;
@@ -164,12 +141,10 @@ export default function FileUpload({ session, onSuccess }: FileUploadProps) {
       setMessage(successMessage);
       setMessageType('success');
       
-      // Callback de succès
       if (onSuccess) {
         setTimeout(() => onSuccess(), 1500);
       }
     } catch (err) {
-      console.error("[FileUpload] unexpected exception", err);
       setMessage(`Erreur réseau : ${err instanceof Error ? err.message : 'Erreur inconnue'}`);
       setMessageType('error');
     } finally {
@@ -184,21 +159,13 @@ export default function FileUpload({ session, onSuccess }: FileUploadProps) {
   };
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    console.debug("[FileUpload] onChange event", {
-      time: new Date().toISOString(),
-      readyState: document.readyState,
-    });
-    
     const file = e.currentTarget.files?.[0];
     if (!file) {
-      console.warn("[FileUpload] no file selected");
       return;
     }
 
     await processFile(file);
   }
-
-  // Drag and Drop handlers
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();

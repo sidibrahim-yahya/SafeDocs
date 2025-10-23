@@ -37,8 +37,5 @@ app.post('/internal/verify', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  // eslint-disable-next-line no-console
   console.log(`[auth-service] listening on ${PORT}`);
 });
-
-

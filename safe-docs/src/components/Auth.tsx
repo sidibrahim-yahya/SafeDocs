@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import './Auth.css'
 
-// Icônes SVG
 const MailIcon = () => (
   <svg className="auth-icon" viewBox="0 0 24 24" fill="none">
     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -70,7 +69,6 @@ export default function Auth() {
       return
     }
 
-    console.log('[Auth] signIn attempt', { email })
     setLoading(true)
     setMessage('')
     
@@ -78,13 +76,11 @@ export default function Auth() {
     setLoading(false)
     
     if (error) {
-      console.error('[Auth] signIn error', error)
       setMessage('Email ou mot de passe incorrect. Veuillez réessayer.')
       setMessageType('error')
       return
     }
     
-    console.log('[Auth] signIn success')
     setMessage('Connexion réussie ! Redirection en cours...')
     setMessageType('success')
   }
@@ -114,7 +110,6 @@ export default function Auth() {
       return
     }
 
-    console.log('[Auth] signUp attempt', { email })
     setLoading(true)
     setMessage('')
     
@@ -128,13 +123,11 @@ export default function Auth() {
     setLoading(false)
     
     if (error) {
-      console.error('[Auth] signUp error', error)
       setMessage(`Erreur lors de l'inscription : ${error.message}`)
       setMessageType('error')
       return
     }
     
-    console.log('[Auth] signUp success')
     setMessage('Compte créé avec succès ! Vérifiez votre email pour confirmer votre compte.')
     setMessageType('success')
   }
@@ -152,7 +145,6 @@ export default function Auth() {
       return
     }
 
-    console.log('[Auth] resetPassword attempt', { email })
     setLoading(true)
     setMessage('')
     
@@ -162,13 +154,11 @@ export default function Auth() {
     setLoading(false)
     
     if (error) {
-      console.error('[Auth] resetPassword error', error)
       setMessage(`Erreur : ${error.message}`)
       setMessageType('error')
       return
     }
     
-    console.log('[Auth] resetPassword success')
     setMessage('Email de réinitialisation envoyé ! Vérifiez votre boîte de réception.')
     setMessageType('success')
   }

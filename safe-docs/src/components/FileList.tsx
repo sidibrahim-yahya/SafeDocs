@@ -30,40 +30,31 @@ export default function FileList(props: FileListProps) {
   const userId = props.user?.id ?? props.session?.user?.id;
 
   useEffect(() => {
-    console.log("[FileList] mount");
     if (!userId) {
-      console.warn("[FileList] no userId available on mount");
       setLoading(false);
       return;
     }
     fetchFiles();
-    return () => console.log("[FileList] unmount");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, props.refreshTrigger]);
 
   async function fetchFiles() {
     if (!userId) {
-      console.warn("[FileList] fetchFiles aborted: missing userId");
       setLoading(false);
       return;
     }
-    console.log("[FileList] fetchFiles start via gateway", { userId });
 
     try {
       setLoading(true);
       setError(null);
 
-      // Get access token from Supabase session
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) {
-        console.warn("[FileList] no token available");
         setError("Session expirée, veuillez vous reconnecter.");
         setLoading(false);
         return;
       }
 
-      // Call gateway API
       const response = await fetch(`${API_GATEWAY_URL}/v1/files/list`, {
         method: 'POST',
         headers: {
@@ -74,8 +65,6 @@ export default function FileList(props: FileListProps) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: response.statusText }));
-        console.error("[FileList] fetchFiles error:", errorData);
         setError("Erreur lors du chargement des fichiers.");
         setLoading(false);
         return;
@@ -83,10 +72,8 @@ export default function FileList(props: FileListProps) {
 
       const result = await response.json();
       const items = result.items || [];
-      console.log("[FileList] fetchFiles success via gateway", { count: items.length });
       setFiles(items);
     } catch (err) {
-      console.error("[FileList] fetchFiles exception:", err);
       setError("Erreur réseau lors du chargement des fichiers.");
     } finally {
       setLoading(false);
@@ -94,17 +81,14 @@ export default function FileList(props: FileListProps) {
   }
 
   async function downloadFile(path: string, filename: string) {
-    console.log("[FileList] downloadFile start", { path, filename });
     try {
       const bucket = "premier_tp";
       const { data, error } = await supabase.storage.from(bucket).download(path);
 
       if (error) {
-        console.error("[FileList] downloadFile error:", error);
         return;
       }
 
-      console.log("[FileList] downloadFile success, creating blob URL");
       const url = URL.createObjectURL(data);
       const a = document.createElement("a");
       a.href = url;
@@ -113,19 +97,13 @@ export default function FileList(props: FileListProps) {
 
       setTimeout(() => {
         URL.revokeObjectURL(url);
-        console.log("[FileList] revoked object URL for", filename);
       }, 5000);
     } catch (err) {
-      console.error("[FileList] downloadFile exception:", err);
     }
   }
 
-  async function deleteFile(fileId: string, path: string) {
-    console.log("[FileList] deleteFile start", { fileId, path });
+  async function deleteFile(_fileId: string, path: string) {
     try {
-      const bucket = "premier_tp";
-      
-      // Get access token
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) {
@@ -133,7 +111,6 @@ export default function FileList(props: FileListProps) {
         return;
       }
 
-      // Supprimer via l'API Gateway (qui gérera storage + DB)
       const response = await fetch(`${API_GATEWAY_URL}/v1/files/delete`, {
         method: 'POST',
         headers: {
@@ -147,17 +124,12 @@ export default function FileList(props: FileListProps) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: response.statusText }));
-        console.error("[FileList] delete error:", errorData);
         setError(`Erreur lors de la suppression : ${errorData.message || 'Erreur inconnue'}`);
         return;
       }
 
-      console.log("[FileList] file deleted successfully via API Gateway");
-      
-      // Rafraîchir la liste
       await fetchFiles();
     } catch (err) {
-      console.error("[FileList] deleteFile exception:", err);
       setError("Erreur lors de la suppression du fichier.");
     }
   }
@@ -171,14 +143,12 @@ export default function FileList(props: FileListProps) {
 
     if (!confirmDelete) return;
 
-    console.log("[FileList] deleteSelectedFiles start", { count: selectedFiles.size });
     setDeleting(true);
 
     try {
       const filesToDelete = files.filter(f => selectedFiles.has(f.id));
       const paths = filesToDelete.map(f => f.path);
 
-      // Get access token
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       if (!token) {
@@ -187,7 +157,6 @@ export default function FileList(props: FileListProps) {
         return;
       }
 
-      // Supprimer chaque fichier via l'API Gateway
       let deleteErrors = 0;
       for (const path of paths) {
         try {
@@ -202,11 +171,9 @@ export default function FileList(props: FileListProps) {
 
           if (!response.ok) {
             deleteErrors++;
-            console.error("[FileList] delete error for path:", path);
           }
         } catch (err) {
           deleteErrors++;
-          console.error("[FileList] delete exception for path:", path, err);
         }
       }
 
@@ -214,13 +181,9 @@ export default function FileList(props: FileListProps) {
         setError(`${deleteErrors} fichier(s) n'ont pas pu être supprimé(s).`);
       }
 
-      console.log("[FileList] files deleted successfully via API Gateway");
-
-      // Rafraîchir la liste et réinitialiser la sélection
       setSelectedFiles(new Set());
       await fetchFiles();
     } catch (err) {
-      console.error("[FileList] deleteSelectedFiles exception:", err);
       setError("Erreur lors de la suppression des fichiers.");
     } finally {
       setDeleting(false);
@@ -230,12 +193,10 @@ export default function FileList(props: FileListProps) {
   async function downloadSelectedFiles() {
     if (selectedFiles.size === 0) return;
 
-    console.log("[FileList] downloadSelectedFiles start", { count: selectedFiles.size });
     const filesToDownload = files.filter(f => selectedFiles.has(f.id));
 
     for (const file of filesToDownload) {
       await downloadFile(file.path, file.filename);
-      // Petit délai entre chaque téléchargement pour éviter de bloquer le navigateur
       await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
@@ -263,7 +224,6 @@ export default function FileList(props: FileListProps) {
   const getFileIcon = (filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase();
     
-    // Images
     if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext || '')) {
       return (
         <svg viewBox="0 0 24 24" fill="none">
@@ -274,7 +234,6 @@ export default function FileList(props: FileListProps) {
       );
     }
     
-    // PDFs
     if (ext === 'pdf') {
       return (
         <svg viewBox="0 0 24 24" fill="none">
@@ -284,7 +243,6 @@ export default function FileList(props: FileListProps) {
       );
     }
     
-    // Documents
     if (['doc', 'docx', 'txt', 'rtf'].includes(ext || '')) {
       return (
         <svg viewBox="0 0 24 24" fill="none">
@@ -294,7 +252,6 @@ export default function FileList(props: FileListProps) {
       );
     }
     
-    // Archives
     if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext || '')) {
       return (
         <svg viewBox="0 0 24 24" fill="none">
@@ -303,7 +260,6 @@ export default function FileList(props: FileListProps) {
       );
     }
     
-    // Default
     return (
       <svg viewBox="0 0 24 24" fill="none">
         <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" stroke="currentColor" strokeWidth="2"/>
@@ -316,7 +272,6 @@ export default function FileList(props: FileListProps) {
     if (!dateStr) return 'Date inconnue';
     const date = new Date(dateStr);
     
-    // Vérifier si la date est valide
     if (isNaN(date.getTime())) return 'Date inconnue';
     
     const now = new Date();
