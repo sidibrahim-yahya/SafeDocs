@@ -45,10 +45,10 @@ if [ ! -f .env ]; then
 fi
 
 print_info "Arrêt des services existants..."
-docker-compose down &> /dev/null
+docker compose down &> /dev/null
 
 print_info "Construction et démarrage des services Docker..."
-if docker-compose build && docker-compose up -d; then
+if docker compose build && docker compose up -d; then
     print_status "Services Docker démarrés avec succès"
 else
     print_error "Erreur lors du démarrage des services Docker"
@@ -60,11 +60,11 @@ sleep 8
 
 # Vérifier que les services sont en cours d'exécution
 print_info "Vérification des services..."
-if docker-compose ps | grep -q "Up"; then
+if docker compose ps | grep -q "Up"; then
     print_status "Tous les services Docker sont en cours d'exécution"
 else
     print_error "Certains services Docker ne sont pas démarrés"
-    docker-compose ps
+    docker compose ps
     exit 1
 fi
 
@@ -109,7 +109,7 @@ echo -e "${BLUE}🔐 Auth Service:${NC} http://localhost:8081"
 echo ""
 echo -e "${YELLOW}📋 Commandes utiles:${NC}"
 echo -e "  • Arrêter tout: ${BLUE}./stop.sh${NC}"
-echo -e "  • Voir les logs Docker: ${BLUE}docker-compose logs -f${NC}"
+echo -e "  • Voir les logs Docker: ${BLUE}docker compose logs -f${NC}"
 echo -e "  • Redémarrer: ${BLUE}./start.sh${NC}"
 echo ""
 echo -e "${GREEN}✅ Prêt à utiliser ! Ouvrez http://localhost:5175 dans votre navigateur${NC}"
